@@ -84,8 +84,8 @@ export default function Home() {
     }
   };
 
-  const handleGameComplete = (success: boolean) => {
-    if (success) {
+  const handleGameComplete = (score: number) => {
+    if (score > 0) {
       const newStreak = streak + 1;
       setStreak(newStreak);
       localStorage.setItem("rhythmPuzzleStreak", newStreak.toString());
