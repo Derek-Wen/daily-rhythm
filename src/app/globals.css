@@ -107,6 +107,10 @@
 
   .tap-zone {
     @apply rounded-full border-4 border-primary/50 bg-primary/20 flex items-center justify-center transition-all duration-200;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   .tap-zone.active {
@@ -119,6 +123,10 @@
 
   .press-bar-segment {
     @apply rounded-lg bg-pink-300/50 border-2 border-pink-400/50 transition-all duration-100 h-8;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   .press-bar-segment.active {

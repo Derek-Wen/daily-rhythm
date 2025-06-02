@@ -221,11 +221,23 @@ const FallingNotes = ({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-gradient-to-b from-pink-50 to-pink-100 rounded-lg shadow-lg overflow-hidden touch-none select-none">
+    <div
+      className="w-full max-w-2xl mx-auto bg-gradient-to-b from-pink-50 to-pink-100 rounded-lg shadow-lg overflow-hidden touch-none select-none"
+      style={{
+        touchAction: "manipulation", // Optimizes touch handling
+        WebkitTouchCallout: "none",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+      }}
+    >
       <div
         ref={gameAreaRef}
         className="relative bg-gradient-to-b from-pink-100 to-pink-200"
-        style={{ height: GAME_HEIGHT }}
+        style={{
+          height: GAME_HEIGHT,
+          touchAction: "manipulation",
+          WebkitTouchCallout: "none",
+        }}
       >
         {/* Lane dividers */}
         {Array.from({ length: LANES - 1 }).map((_, i) => (
@@ -304,32 +316,54 @@ const FallingNotes = ({
           ))}
         </AnimatePresence>
 
-        {/* Tap zones - invisible but functional */}
+        {/* Tap zones - optimized for mobile */}
         <div className="absolute w-full" style={{ top: `${TAP_ZONE_Y}px` }}>
           {Array.from({ length: LANES }).map((_, i) => {
             return (
               <button
                 key={i}
-                className="absolute bg-transparent border-none outline-none touch-manipulation"
+                className="absolute bg-transparent border-none outline-none cursor-pointer select-none"
                 style={{
                   left: `${i * LANE_WIDTH}%`,
                   width: `${LANE_WIDTH}%`,
-                  height: "64px",
+                  height: "80px", // Increased height for better touch targets
+                  touchAction: "manipulation", // Prevents double-tap zoom and other gestures
+                  WebkitTouchCallout: "none", // Prevents callout on iOS
+                  WebkitUserSelect: "none", // Prevents text selection
+                  userSelect: "none",
                 }}
-                onMouseDown={() => handleKeyPress(i, true)}
-                onMouseUp={() => handleKeyPress(i, false)}
-                onMouseLeave={() => handleKeyPress(i, false)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleKeyPress(i, true);
+                }}
+                onMouseUp={(e) => {
+                  e.preventDefault();
+                  handleKeyPress(i, false);
+                }}
+                onMouseLeave={(e) => {
+                  e.preventDefault();
+                  handleKeyPress(i, false);
+                }}
                 onTouchStart={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   handleKeyPress(i, true);
                 }}
                 onTouchEnd={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   handleKeyPress(i, false);
                 }}
                 onTouchCancel={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   handleKeyPress(i, false);
+                }}
+                onTouchMove={(e) => {
+                  e.preventDefault(); // Prevent scrolling when touching buttons
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault(); // Prevent context menu on long press
                 }}
               ></button>
             );
