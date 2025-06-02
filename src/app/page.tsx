@@ -9,25 +9,15 @@ import RhythmGame from "@/components/RhythmGame";
 import moment from "moment-timezone";
 
 export default function Home() {
-  const [showTutorial, setShowTutorial] = useState(false);
   const [streak, setStreak] = useState(0);
-  const [isFirstVisit, setIsFirstVisit] = useState(true);
   const [nextPuzzleTime, setNextPuzzleTime] = useState("");
   const [weather, setWeather] = useState<{
-    temp: number;
+    high: number;
+    low: number;
     condition: string;
   } | null>(null);
 
-  // Check if user is visiting for the first time
   useEffect(() => {
-    const hasVisited = localStorage.getItem("hasVisitedRhythmPuzzle");
-    if (hasVisited) {
-      setIsFirstVisit(false);
-    } else {
-      localStorage.setItem("hasVisitedRhythmPuzzle", "true");
-      setShowTutorial(true);
-    }
-
     // Get streak from local storage
     const savedStreak = localStorage.getItem("rhythmPuzzleStreak");
     if (savedStreak) {
@@ -57,15 +47,16 @@ export default function Home() {
 
   const fetchWeather = async () => {
     try {
-      // Using a free weather API (OpenWeatherMap alternative)
+      // Using a free weather API (OpenWeatherMap alternative) - get daily forecast
       const response = await fetch(
-        "https://api.open-meteo.com/v1/forecast?latitude=37.7749&longitude=-122.4194&current_weather=true&temperature_unit=fahrenheit",
+        "https://api.open-meteo.com/v1/forecast?latitude=37.7749&longitude=-122.4194&daily=temperature_2m_max,temperature_2m_min,weathercode&temperature_unit=fahrenheit&timezone=America/Los_Angeles",
       );
       const data = await response.json();
 
-      if (data.current_weather) {
-        const temp = Math.round(data.current_weather.temperature);
-        const weatherCode = data.current_weather.weathercode;
+      if (data.daily) {
+        const high = Math.round(data.daily.temperature_2m_max[0]);
+        const low = Math.round(data.daily.temperature_2m_min[0]);
+        const weatherCode = data.daily.weathercode[0];
 
         // Simple weather condition mapping
         let condition = "Clear";
@@ -75,12 +66,12 @@ export default function Home() {
         else if (weatherCode >= 51 && weatherCode <= 57) condition = "Drizzle";
         else if (weatherCode >= 1 && weatherCode <= 3) condition = "Cloudy";
 
-        setWeather({ temp, condition });
+        setWeather({ high, low, condition });
       }
     } catch (error) {
       console.log("Weather fetch failed:", error);
       // Set default weather if API fails
-      setWeather({ temp: 65, condition: "Clear" });
+      setWeather({ high: 70, low: 55, condition: "Clear" });
     }
   };
 
@@ -90,10 +81,6 @@ export default function Home() {
       setStreak(newStreak);
       localStorage.setItem("rhythmPuzzleStreak", newStreak.toString());
     }
-  };
-
-  const handleCloseTutorial = () => {
-    setShowTutorial(false);
   };
 
   return (
@@ -136,7 +123,7 @@ export default function Home() {
               <CardContent className="flex items-center p-4">
                 <Cloud className="mr-2 h-4 w-4 text-pink-600" />
                 <span className="text-pink-700">
-                  SF: {weather.temp}°F {weather.condition}
+                  SF: {weather.high}°/{weather.low}°F {weather.condition}
                 </span>
               </CardContent>
             </Card>
@@ -151,33 +138,6 @@ export default function Home() {
             </CardContent>
           </Card>
         </div>
-
-        {showTutorial && (
-          <Card className="mb-6 border-pink-300 bg-white/90">
-            <CardHeader>
-              <CardTitle className="text-pink-800">
-                How to Play, Emily!
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ol className="list-decimal pl-5 space-y-2 text-pink-700">
-                <li>Watch the pink notes fall from the top</li>
-                <li>
-                  Press D, F, J, K keys or tap the zones when notes reach them
-                </li>
-                <li>Time your taps perfectly for higher scores</li>
-                <li>Score at least 70% to unlock your personalized message</li>
-                <li>Return daily for new patterns and build your streak!</li>
-              </ol>
-              <Button
-                className="mt-4 w-full bg-pink-500 hover:bg-pink-600 text-white"
-                onClick={handleCloseTutorial}
-              >
-                Let's Play!
-              </Button>
-            </CardContent>
-          </Card>
-        )}
 
         <motion.div
           className="w-full"
