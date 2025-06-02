@@ -29,10 +29,7 @@ interface Note {
   startTime: number;
   y: number;
   hit: boolean;
-  type: "tap" | "hold";
-  holdDuration?: number;
-  isHolding?: boolean;
-  holdStartTime?: number;
+  type: "tap";
 }
 
 interface RhythmGameProps {
