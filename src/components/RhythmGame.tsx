@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, RefreshCw, HelpCircle } from "lucide-react";
 import { Button } from "./ui/button";
+import moment from "moment-timezone";
 import {
   Card,
   CardContent,
@@ -19,316 +20,447 @@ import {
   DialogDescription,
 } from "./ui/dialog";
 import { Progress } from "./ui/progress";
-import RhythmPattern from "./RhythmPattern";
+import FallingNotes from "./RhythmPattern";
 import ResultsDisplay from "./ResultsDisplay";
+
+interface Note {
+  id: number;
+  lane: number;
+  startTime: number;
+  y: number;
+  hit: boolean;
+  type: "tap" | "hold";
+  holdDuration?: number;
+  isHolding?: boolean;
+  holdStartTime?: number;
+}
 
 interface RhythmGameProps {
   difficulty?: number;
   onComplete?: (score: number) => void;
 }
 
+// Message bank for Emily
+const MESSAGE_BANK = [
+  "i like you so much emily",
+  "you are the prettiest i am so lucky",
+  "you are such a dummy butt",
+  "if you played this game that means i like you more",
+  "why do you have to be so kind and caring and hardworking",
+  "i like you so so so much",
+  "i'm very grateful that i met you",
+  "good job bunghole",
+  "5'2.9999",
+  "can you come here now, why aren't you here now",
+  "so you will play this dumb game but you won't teleport to me",
+  "come here now i need you",
+  "i think about you every day dummy",
+  "god i like you so much wtf it's insane",
+  "sibal i like you sibal",
+  "are you sure you like me, i like you so much",
+];
+
 const RhythmGame = ({ difficulty = 1, onComplete }: RhythmGameProps) => {
   // Game states
   const [gameState, setGameState] = useState<
-    "tutorial" | "ready" | "playing" | "success" | "failure"
+    "tutorial" | "ready" | "playing" | "complete"
   >("ready");
   const [isFirstTime, setIsFirstTime] = useState(true);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
-  const [pattern, setPattern] = useState<number[]>([]);
-  const [userPattern, setUserPattern] = useState<number[]>([]);
-  const [currentBeat, setCurrentBeat] = useState(-1);
-  const [score, setScore] = useState(0);
-  const [streak, setStreak] = useState(0);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [gameTime, setGameTime] = useState(0);
+  const [score, setScore] = useState({ perfect: 0, good: 0, okay: 0, miss: 0 });
   const [progress, setProgress] = useState(0);
-  const [tempo, setTempo] = useState(60); // BPM
+  const [currentMessage, setCurrentMessage] = useState("");
+  const [usedMessageIndices, setUsedMessageIndices] = useState<number[]>([]);
+  const [noteSpeed, setNoteSpeed] = useState(450);
+  const [noteFrequency, setNoteFrequency] = useState(1.0);
+  const [showSpeedControl, setShowSpeedControl] = useState(false);
+  const [currentDate, setCurrentDate] = useState<string>("");
 
-  const audioContext = useRef<AudioContext | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const beatInterval = 60000 / tempo; // ms between beats
+  const gameTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const GAME_DURATION = 30; // seconds
 
-  // Generate a random rhythm pattern based on difficulty
+  // Generate daily notes based on date seed
   useEffect(() => {
-    generatePattern();
+    // Set current date on client side to avoid hydration mismatch - using SF time
+    const sfDate = moment().tz("America/Los_Angeles");
+    setCurrentDate(sfDate.format("dddd, MMMM D, YYYY"));
+
+    generateDailyNotes();
 
     // Check if user is first time visitor
-    const visited = localStorage.getItem("rhythm-game-visited");
+    const visited = localStorage.getItem("emily-rhythm-game-visited");
     if (!visited) {
       setIsFirstTime(true);
       setIsTutorialOpen(true);
-      localStorage.setItem("rhythm-game-visited", "true");
+      localStorage.setItem("emily-rhythm-game-visited", "true");
     } else {
       setIsFirstTime(false);
     }
 
-    // Initialize audio context
-    if (typeof window !== "undefined") {
-      audioContext.current = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
-    }
-
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
+      if (gameTimerRef.current) {
+        clearInterval(gameTimerRef.current);
       }
     };
-  }, [difficulty]);
+  }, [difficulty, noteFrequency]);
 
-  const generatePattern = () => {
-    const length = 4 + Math.floor(difficulty / 2); // Pattern length increases with difficulty
-    const newPattern: number[] = [];
+  const generateDailyNotes = () => {
+    // Use current SF date as seed for consistent daily patterns
+    const todaySF = moment().tz("America/Los_Angeles");
+    const seed =
+      todaySF.year() * 10000 + (todaySF.month() + 1) * 100 + todaySF.date();
 
-    // Generate pattern with 1s (beats) and 0s (rests)
-    for (let i = 0; i < length; i++) {
-      // Higher difficulty means more complex patterns
-      if (difficulty > 3 && Math.random() > 0.7) {
-        // Add syncopation for higher difficulties
-        newPattern.push(0);
-      } else {
-        newPattern.push(1);
+    // Simple seeded random function
+    let seedValue = seed;
+    const seededRandom = () => {
+      seedValue = (seedValue * 9301 + 49297) % 233280;
+      return seedValue / 233280;
+    };
+
+    // Increased note frequency based on parameter
+    const baseNoteCount = Math.floor(60 * noteFrequency); // Base 60 notes for 30 seconds
+    const noteCount = baseNoteCount + Math.floor(seededRandom() * 20);
+    const newNotes: Note[] = [];
+    let noteId = 0;
+
+    // Generate complex patterns for expert difficulty
+    for (let i = 0; i < noteCount; i++) {
+      const baseTime = 2 + (i * (GAME_DURATION - 6)) / noteCount;
+      const timeVariation = (seededRandom() - 0.5) * 1.5;
+      const startTime = Math.max(1, baseTime + timeVariation);
+
+      const lane = Math.floor(seededRandom() * 4);
+
+      // Only tap notes now
+      newNotes.push({
+        id: noteId++,
+        lane,
+        startTime,
+        y: -50,
+        hit: false,
+        type: "tap",
+      });
+
+      // Add rapid sequences for expert difficulty
+      if (seededRandom() < 0.2 && i < noteCount - 3) {
+        for (let j = 1; j <= 2; j++) {
+          const rapidLane = (lane + j) % 4;
+          newNotes.push({
+            id: noteId++,
+            lane: rapidLane,
+            startTime: startTime + j * 0.15, // Very quick succession
+            y: -50,
+            hit: false,
+            type: "tap",
+          });
+        }
+        i += 2; // Skip ahead to avoid overcrowding
       }
     }
 
-    setPattern(newPattern);
-    setTempo(60 + difficulty * 5); // Tempo increases with difficulty
-  };
-
-  const playSound = (frequency = 440) => {
-    if (!audioContext.current) return;
-
-    const oscillator = audioContext.current.createOscillator();
-    const gainNode = audioContext.current.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.current.destination);
-
-    oscillator.frequency.value = frequency;
-    oscillator.type = "sine";
-
-    gainNode.gain.value = 0.1;
-
-    oscillator.start();
-    gainNode.gain.exponentialRampToValueAtTime(
-      0.001,
-      audioContext.current.currentTime + 0.3,
-    );
-
-    setTimeout(() => oscillator.stop(), 300);
+    // Sort by start time
+    newNotes.sort((a, b) => a.startTime - b.startTime);
+    setNotes(newNotes);
   };
 
   const startGame = () => {
     setGameState("playing");
-    setUserPattern([]);
-    setCurrentBeat(-1);
+    setScore({ perfect: 0, good: 0, okay: 0, miss: 0 });
+    setGameTime(0);
     setProgress(0);
+    startTimeRef.current = Date.now();
 
-    // Start the metronome
-    let beat = 0;
-    const totalBeats = pattern.length;
+    // Reset notes
+    setNotes((prev) => prev.map((note) => ({ ...note, hit: false, y: -50 })));
 
-    timerRef.current = setInterval(() => {
-      if (beat >= totalBeats) {
-        if (timerRef.current) clearInterval(timerRef.current);
-        setCurrentBeat(-1);
-        return;
+    // Start game timer
+    gameTimerRef.current = setInterval(() => {
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      setGameTime(elapsed);
+      setProgress((elapsed / GAME_DURATION) * 100);
+
+      if (elapsed >= GAME_DURATION) {
+        endGame();
       }
-
-      setCurrentBeat(beat);
-      setProgress(((beat + 1) / totalBeats) * 100);
-
-      if (pattern[beat] === 1) {
-        playSound(440); // Play A4 for beats
-      } else {
-        playSound(220); // Play A3 for rests (quieter)
-      }
-
-      beat++;
-    }, beatInterval);
+    }, 16); // ~60fps
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (gameState !== "playing") return;
-
-    // Space bar or Enter key to tap
-    if (e.key === " " || e.key === "Enter") {
-      handleTap();
-    }
-  };
-
-  const handleTap = () => {
-    if (gameState !== "playing") return;
-
-    const newUserPattern = [...userPattern];
-    newUserPattern[currentBeat] = 1;
-    setUserPattern(newUserPattern);
-
-    // Visual feedback
-    playSound(660); // Higher pitch for user taps
-  };
-
-  const checkResult = () => {
-    // Compare user pattern with the game pattern
-    let correct = true;
-    let userScore = 0;
-
-    for (let i = 0; i < pattern.length; i++) {
-      // If pattern has a beat and user tapped, or pattern has no beat and user didn't tap
-      if (
-        (pattern[i] === 1 && userPattern[i] === 1) ||
-        (pattern[i] === 0 && !userPattern[i])
-      ) {
-        userScore += 10;
-      } else {
-        correct = false;
-        // Still give partial points for trying
-        if (userPattern[i]) userScore += 2;
-      }
+  const endGame = () => {
+    if (gameTimerRef.current) {
+      clearInterval(gameTimerRef.current);
     }
 
-    setScore(userScore);
+    const totalNotes = notes.length;
+    const hitNotes = score.perfect + score.good + score.okay;
+    const totalScore = score.perfect * 100 + score.good * 70 + score.okay * 40;
 
-    if (correct) {
-      setGameState("success");
-      setStreak((prev) => prev + 1);
-      if (onComplete) onComplete(userScore);
+    // Calculate accuracy based on hit notes vs total notes
+    const accuracy = totalNotes > 0 ? (hitNotes / totalNotes) * 100 : 0;
+
+    // Calculate percentage of notes hit
+    const notesHitPercentage =
+      totalNotes > 0 ? (hitNotes / totalNotes) * 100 : 0;
+
+    // Select a message that hasn't been used yet
+    let availableIndices: number[] = [];
+
+    // If all messages have been used, reset the used indices
+    if (usedMessageIndices.length >= MESSAGE_BANK.length) {
+      setUsedMessageIndices([]);
+      availableIndices = Array.from(
+        { length: MESSAGE_BANK.length },
+        (_, i) => i,
+      );
     } else {
-      setGameState("failure");
-      setStreak(0);
+      // Get indices of messages that haven't been used yet
+      availableIndices = Array.from(
+        { length: MESSAGE_BANK.length },
+        (_, i) => i,
+      ).filter((index) => !usedMessageIndices.includes(index));
     }
+
+    // Select a random message from available ones
+    const randomIndex = Math.floor(Math.random() * availableIndices.length);
+    const messageIndex = availableIndices[randomIndex];
+
+    // Update used messages
+    setUsedMessageIndices((prev) => [...prev, messageIndex]);
+    setCurrentMessage(MESSAGE_BANK[messageIndex]);
+
+    // Set game state to complete
+    setGameState("complete");
+
+    if (onComplete) onComplete(totalScore);
   };
 
-  useEffect(() => {
-    // When the pattern finishes playing, check the result
-    if (currentBeat === pattern.length - 1) {
-      setTimeout(() => {
-        checkResult();
-      }, beatInterval + 500); // Wait a bit after the last beat
-    }
-  }, [currentBeat]);
+  const handleNoteHit = (
+    noteId: number,
+    accuracy: "perfect" | "good" | "okay" | "miss",
+  ) => {
+    setScore((prev) => ({
+      ...prev,
+      [accuracy]: prev[accuracy] + 1,
+    }));
+  };
 
   const resetGame = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (gameTimerRef.current) clearInterval(gameTimerRef.current);
     setGameState("ready");
-    setUserPattern([]);
-    setCurrentBeat(-1);
+    setGameTime(0);
     setProgress(0);
-    generatePattern();
+    setScore({ perfect: 0, good: 0, okay: 0, miss: 0 });
+    setCurrentMessage("");
+    generateDailyNotes();
   };
 
   return (
-    <div
-      className="flex flex-col items-center justify-center min-h-[600px] w-full max-w-[800px] mx-auto bg-background p-4"
-      onKeyDown={handleKeyPress}
-      tabIndex={0}
-    >
-      <Card className="w-full shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-center text-2xl font-bold">
-            Daily Rhythm Challenge
+    <div className="flex flex-col items-center justify-center min-h-[600px] w-full max-w-[900px] mx-auto bg-gradient-to-br from-pink-50 to-pink-100 p-2 sm:p-4 rounded-lg">
+      <Card className="w-full shadow-lg border-pink-200">
+        <CardHeader className="bg-gradient-to-r from-pink-100 to-pink-200">
+          <CardTitle className="text-center text-2xl font-bold text-pink-800">
+            {currentDate || "Loading..."}
           </CardTitle>
           <div className="flex justify-between items-center mt-2">
-            <div className="text-sm text-muted-foreground">
-              Difficulty: {difficulty} | Streak: {streak}
+            <div className="text-sm text-pink-600">
+              Notes: {notes.length} | Speed: {noteSpeed}px/s | Frequency:{" "}
+              {noteFrequency.toFixed(1)}x
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsTutorialOpen(true)}
-            >
-              <HelpCircle className="h-4 w-4 mr-1" /> How to Play
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSpeedControl(!showSpeedControl)}
+                className="text-pink-600 hover:text-pink-800 hover:bg-pink-100"
+              >
+                ⚙️ Speed
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsTutorialOpen(true)}
+                className="text-pink-600 hover:text-pink-800 hover:bg-pink-100"
+              >
+                <HelpCircle className="h-4 w-4 mr-1" /> How to Play
+              </Button>
+            </div>
           </div>
-        </CardHeader>
 
-        <CardContent>
-          {gameState === "success" || gameState === "failure" ? (
-            <ResultsDisplay
-              success={gameState === "success"}
-              score={score}
-              streak={streak}
-              onPlayAgain={resetGame}
-            />
-          ) : (
-            <div className="space-y-8">
-              <div className="relative">
-                <Progress value={progress} className="h-2" />
-                <div className="mt-8">
-                  <RhythmPattern
-                    pattern={pattern}
-                    currentBeat={currentBeat}
-                    userPattern={userPattern}
-                  />
+          {showSpeedControl && (
+            <div className="mt-4 p-3 bg-pink-50 rounded-lg space-y-4">
+              <div>
+                <label className="text-sm font-medium text-pink-700 block mb-2">
+                  Note Speed: {noteSpeed}px/s
+                </label>
+                <input
+                  type="range"
+                  min="200"
+                  max="600"
+                  step="25"
+                  value={noteSpeed}
+                  onChange={(e) => setNoteSpeed(Number(e.target.value))}
+                  className="w-full h-2 bg-pink-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-pink-600 mt-1">
+                  <span>Slow</span>
+                  <span>Fast</span>
                 </div>
               </div>
+              <div>
+                <label className="text-sm font-medium text-pink-700 block mb-2">
+                  Note Frequency: {noteFrequency.toFixed(1)}x
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.1"
+                  value={noteFrequency}
+                  onChange={(e) => setNoteFrequency(Number(e.target.value))}
+                  className="w-full h-2 bg-pink-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-pink-600 mt-1">
+                  <span>Less</span>
+                  <span>More</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardHeader>
+
+        <CardContent className="p-6">
+          {gameState === "complete" ? (
+            <ResultsDisplay
+              score={score.perfect * 100 + score.good * 70 + score.okay * 40}
+              maxScore={notes.length * 100}
+              dailyMessage={currentMessage}
+              onPlayAgain={resetGame}
+              accuracy={
+                ((score.perfect + score.good + score.okay) / notes.length) * 100
+              }
+              notesHitPercentage={
+                ((score.perfect + score.good + score.okay) / notes.length) * 100
+              }
+            />
+          ) : (
+            <div className="space-y-6">
+              <div className="relative">
+                <Progress value={progress} className="h-3 bg-pink-100" />
+                <div className="mt-4 flex justify-center gap-4 text-sm">
+                  <span className="text-yellow-600">
+                    Perfect: {score.perfect}
+                  </span>
+                  <span className="text-green-600">Good: {score.good}</span>
+                  <span className="text-blue-600">Okay: {score.okay}</span>
+                  <span className="text-red-600">Miss: {score.miss}</span>
+                </div>
+              </div>
+
+              <FallingNotes
+                notes={notes}
+                isPlaying={gameState === "playing"}
+                onNoteHit={handleNoteHit}
+                gameTime={gameTime}
+                noteSpeed={noteSpeed}
+              />
 
               <div className="flex flex-col items-center space-y-4">
                 {gameState === "ready" ? (
                   <Button
                     size="lg"
                     onClick={startGame}
-                    className="w-40 h-16 text-lg"
+                    className="w-40 h-16 text-lg bg-pink-500 hover:bg-pink-600 text-white"
                   >
                     <Play className="mr-2 h-5 w-5" /> Start
                   </Button>
                 ) : (
-                  <motion.div
-                    className="w-40 h-16 flex items-center justify-center rounded-md bg-primary text-primary-foreground"
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleTap}
-                  >
-                    Tap!
-                  </motion.div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-pink-700">
+                      {Math.max(0, Math.ceil(GAME_DURATION - gameTime))}s
+                    </div>
+                    <p className="text-sm text-pink-600">Time remaining</p>
+                  </div>
                 )}
 
-                <p className="text-sm text-muted-foreground text-center">
+                <p className="text-sm text-pink-600 text-center">
                   {gameState === "playing"
-                    ? "Tap when you hear a beat!"
-                    : "Press Start to begin the rhythm challenge"}
+                    ? "Hit tap notes! Match the rhythm pattern!"
+                    : "Press Start to begin today's rhythm challenge"}
                 </p>
               </div>
             </div>
           )}
         </CardContent>
 
-        <CardFooter className="flex justify-between">
-          <Button variant="outline" onClick={resetGame}>
-            <RefreshCw className="mr-2 h-4 w-4" /> New Pattern
+        <CardFooter className="flex justify-center bg-pink-50">
+          <Button
+            variant="outline"
+            onClick={resetGame}
+            className="border-pink-300 text-pink-700 hover:bg-pink-100"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" /> New Game
           </Button>
-          <div className="text-sm text-muted-foreground">
-            {new Date().toLocaleDateString()}
-          </div>
         </CardFooter>
       </Card>
 
       {/* Tutorial Dialog */}
       <Dialog open={isTutorialOpen} onOpenChange={setIsTutorialOpen}>
-        <DialogContent>
+        <DialogContent className="border-pink-200">
           <DialogHeader>
-            <DialogTitle>How to Play the Rhythm Challenge</DialogTitle>
+            <DialogTitle className="text-pink-800">
+              How to Play Emily's Rhythm Game
+            </DialogTitle>
             <DialogDescription>
-              <div className="space-y-4 mt-4">
-                <p>
-                  Welcome to the Daily Rhythm Challenge! Test your rhythm skills
-                  by tapping along with the pattern.
-                </p>
+              <div className="space-y-4 mt-4 text-pink-700">
+                <p>by Derek Wen</p>
                 <ol className="list-decimal pl-5 space-y-2">
+                  <li>Watch the notes fall from the top of the screen</li>
                   <li>
-                    Press <strong>Start</strong> to begin the challenge
+                    Press <strong>D, F, J, K</strong> keys or tap the zones when
+                    notes reach them
                   </li>
-                  <li>Listen carefully to the rhythm pattern</li>
                   <li>
-                    Tap the button (or press Space/Enter) when you hear a beat
+                    <strong>Tap Notes:</strong> Quick tap when they reach the
+                    press bar
                   </li>
-                  <li>Don't tap during rests (silent moments)</li>
-                  <li>Match the pattern to unlock today's message!</li>
+                  <li>Expert timing required:</li>
+                  <ul className="list-disc pl-5 mt-1 space-y-1">
+                    <li>
+                      <span className="text-yellow-600 font-bold">Perfect</span>{" "}
+                      - ±15px timing (100 points)
+                    </li>
+                    <li>
+                      <span className="text-green-600 font-bold">Good</span> -
+                      ±25px timing (70 points)
+                    </li>
+                    <li>
+                      <span className="text-blue-600 font-bold">Okay</span> -
+                      ±35px timing (40 points)
+                    </li>
+                    <li>
+                      <span className="text-red-600 font-bold">Miss</span> - No
+                      points
+                    </li>
+                  </ul>
+                  <li>
+                    <strong>Challenge:</strong> Try to hit as many notes as
+                    possible with good timing!
+                  </li>
+                  <li>Adjust note speed and frequency in settings</li>
+                  <li>Come back daily for new expert patterns!</li>
                 </ol>
-                <p>
-                  Come back daily for a new challenge and to build your streak!
-                </p>
               </div>
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center mt-4">
-            <Button onClick={() => setIsTutorialOpen(false)}>Got it!</Button>
+            <Button
+              onClick={() => setIsTutorialOpen(false)}
+              className="bg-pink-500 hover:bg-pink-600 text-white"
+            >
+              Let's Play!
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

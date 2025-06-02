@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Share2, Trophy, Calendar, Star } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -11,33 +10,24 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./ui/tooltip";
 
 interface ResultsDisplayProps {
   score: number;
   maxScore: number;
-  streak: number;
   dailyMessage: string;
-  date?: Date;
+  accuracy: number;
+  notesHitPercentage: number;
   onPlayAgain?: () => void;
-  onShare?: () => void;
 }
 
 const ResultsDisplay = ({
   score = 85,
   maxScore = 100,
-  streak = 3,
-  dailyMessage = "Congratulations! You've got rhythm! Keep up the great work and come back tomorrow for a new challenge.",
-  date = new Date(),
+  dailyMessage = "i like you <3",
+  accuracy = 75,
+  notesHitPercentage = 80,
   onPlayAgain = () => {},
-  onShare = () => {},
 }: ResultsDisplayProps) => {
   const [showMessage, setShowMessage] = useState(false);
   const [showConfetti, setShowConfetti] = useState(true);
@@ -59,17 +49,10 @@ const ResultsDisplay = ({
     };
   }, []);
 
-  const formattedDate = date.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
   const scorePercentage = Math.round((score / maxScore) * 100);
 
   return (
-    <div className="w-full max-w-md mx-auto bg-background">
+    <div className="w-full max-w-md mx-auto bg-gradient-to-br from-pink-50 to-pink-100">
       {showConfetti && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {Array.from({ length: 50 }).map((_, i) => (
@@ -106,22 +89,8 @@ const ResultsDisplay = ({
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <Card className="border-2 shadow-lg">
-          <CardHeader className="text-center pb-2">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-              className="mx-auto mb-2"
-            >
-              <Trophy className="h-12 w-12 text-yellow-500" />
-            </motion.div>
-            <CardTitle className="text-2xl font-bold">Success!</CardTitle>
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              <span>{formattedDate}</span>
-            </div>
-          </CardHeader>
+        <Card className="border-2 shadow-lg border-pink-200 bg-white/80">
+          <CardHeader className="text-center pb-2"></CardHeader>
 
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
@@ -131,15 +100,17 @@ const ResultsDisplay = ({
               </div>
               <div className="text-right">
                 <p className="text-sm font-medium">Accuracy</p>
-                <p className="text-3xl font-bold">{scorePercentage}%</p>
+                <p className="text-3xl font-bold">{Math.round(accuracy)}%</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="flex items-center gap-1">
-                <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-                <span>Streak: {streak} days</span>
-              </Badge>
+            <div className="flex justify-center items-center mt-2">
+              <div className="text-center">
+                <p className="text-sm font-medium">Notes Hit</p>
+                <p className="text-2xl font-bold">
+                  {Math.round(notesHitPercentage)}%
+                </p>
+              </div>
             </div>
 
             <Separator />
@@ -150,37 +121,22 @@ const ResultsDisplay = ({
                 showMessage ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }
               }
               transition={{ duration: 0.5 }}
-              className="bg-primary/10 p-4 rounded-lg border border-primary/20"
+              className="bg-gradient-to-r from-pink-100 to-pink-200 p-4 rounded-lg border border-pink-300"
             >
-              <p className="text-center italic">"{dailyMessage}"</p>
+              <p className="text-center text-pink-800 font-medium">
+                {dailyMessage}
+              </p>
             </motion.div>
           </CardContent>
 
           <CardFooter className="flex flex-col gap-2">
-            <div className="flex w-full gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={onPlayAgain}
-              >
-                Play Again
-              </Button>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="secondary" size="icon" onClick={onShare}>
-                      <Share2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Share your results</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <p className="text-xs text-center text-muted-foreground mt-2">
-              Come back tomorrow for a new rhythm challenge!
-            </p>
+            <Button
+              variant="outline"
+              className="w-full border-pink-300 text-pink-700 hover:bg-pink-100"
+              onClick={onPlayAgain}
+            >
+              Play Again
+            </Button>
           </CardFooter>
         </Card>
       </motion.div>
