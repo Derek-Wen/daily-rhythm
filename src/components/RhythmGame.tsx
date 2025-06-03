@@ -150,6 +150,10 @@ const RhythmGame = ({
     const seed =
       todaySF.year() * 10000 + (todaySF.month() + 1) * 100 + todaySF.date();
 
+    console.log("=== GENERATING DAILY NOTES ===");
+    console.log("Date seed:", seed);
+    console.log("Note frequency multiplier:", noteFrequency);
+
     // Simple seeded random function
     let seedValue = seed;
     const seededRandom = () => {
@@ -160,6 +164,8 @@ const RhythmGame = ({
     // Increased note frequency based on parameter
     const baseNoteCount = Math.floor(60 * noteFrequency); // Base 60 notes for 30 seconds
     const noteCount = baseNoteCount + Math.floor(seededRandom() * 20);
+    console.log("Base note count:", baseNoteCount);
+    console.log("Final note count:", noteCount);
     const newNotes: Note[] = [];
     let noteId = 0;
 
@@ -200,6 +206,8 @@ const RhythmGame = ({
 
     // Sort by start time
     newNotes.sort((a, b) => a.startTime - b.startTime);
+    console.log("Generated notes:", newNotes.length);
+    console.log("First 5 notes:", newNotes.slice(0, 5));
     setNotes(newNotes);
   };
 
@@ -230,16 +238,39 @@ const RhythmGame = ({
       clearInterval(gameTimerRef.current);
     }
 
+    // Capture the current score before any state changes
+    const currentScore = { ...score };
     const totalNotes = notes.length;
-    const hitNotes = score.perfect + score.good + score.okay;
-    const totalScore = score.perfect * 100 + score.good * 70 + score.okay * 40;
+    const hitNotes =
+      currentScore.perfect + currentScore.good + currentScore.okay;
+    const totalScore =
+      currentScore.perfect * 100 +
+      currentScore.good * 70 +
+      currentScore.okay * 40;
+    const maxPossibleScore = totalNotes * 100;
 
-    // Calculate accuracy based on hit notes vs total notes
-    const accuracy = totalNotes > 0 ? (hitNotes / totalNotes) * 100 : 0;
+    // DEBUG LOGS
+    console.log("=== GAME END DEBUG ===");
+    console.log("Total notes generated:", totalNotes);
+    console.log("Score breakdown:", currentScore);
+    console.log("Hit notes (perfect + good + okay):", hitNotes);
+    console.log("Total score (weighted):", totalScore);
+    console.log("Max possible score:", maxPossibleScore);
 
-    // Calculate percentage of notes hit
+    // Calculate accuracy based on score quality (weighted by perfect/good/okay scores)
+    const accuracy =
+      maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0;
+
+    // Calculate percentage of notes hit (simple hit ratio)
     const notesHitPercentage =
       totalNotes > 0 ? (hitNotes / totalNotes) * 100 : 0;
+
+    console.log("Calculated accuracy (weighted):", accuracy.toFixed(2) + "%");
+    console.log(
+      "Notes hit percentage (simple ratio):",
+      notesHitPercentage.toFixed(2) + "%",
+    );
+    console.log("Are they the same?", accuracy === notesHitPercentage);
 
     // Select a message that hasn't been used yet
     let availableIndices: number[] = [];
@@ -280,10 +311,15 @@ const RhythmGame = ({
     noteId: number,
     accuracy: "perfect" | "good" | "okay" | "miss",
   ) => {
-    setScore((prev) => ({
-      ...prev,
-      [accuracy]: prev[accuracy] + 1,
-    }));
+    console.log(`Note hit: ID=${noteId}, Accuracy=${accuracy}`);
+    setScore((prev) => {
+      const newScore = {
+        ...prev,
+        [accuracy]: prev[accuracy] + 1,
+      };
+      console.log("Updated score:", newScore);
+      return newScore;
+    });
   };
 
   const resetGame = () => {
@@ -378,13 +414,22 @@ const RhythmGame = ({
               dailyMessage={currentMessage}
               onPlayAgain={resetGame}
               accuracy={
-                ((score.perfect + score.good + score.okay) / notes.length) * 100
+                notes.length > 0
+                  ? ((score.perfect * 100 + score.good * 70 + score.okay * 40) /
+                      (notes.length * 100)) *
+                    100
+                  : 0
               }
               notesHitPercentage={
-                ((score.perfect + score.good + score.okay) / notes.length) * 100
+                notes.length > 0
+                  ? ((score.perfect + score.good + score.okay) / notes.length) *
+                    100
+                  : 0
               }
               isWin={
-                ((score.perfect + score.good + score.okay) / notes.length) *
+                notes.length > 0 &&
+                ((score.perfect * 100 + score.good * 70 + score.okay * 40) /
+                  (notes.length * 100)) *
                   100 >=
                   75 &&
                 ((score.perfect + score.good + score.okay) / notes.length) *
