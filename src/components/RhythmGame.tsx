@@ -150,10 +150,6 @@ const RhythmGame = ({
     const seed =
       todaySF.year() * 10000 + (todaySF.month() + 1) * 100 + todaySF.date();
 
-    console.log("=== GENERATING DAILY NOTES ===");
-    console.log("Date seed:", seed);
-    console.log("Note frequency multiplier:", noteFrequency);
-
     // Simple seeded random function
     let seedValue = seed;
     const seededRandom = () => {
@@ -164,8 +160,6 @@ const RhythmGame = ({
     // Increased note frequency based on parameter
     const baseNoteCount = Math.floor(60 * noteFrequency); // Base 60 notes for 30 seconds
     const noteCount = baseNoteCount + Math.floor(seededRandom() * 20);
-    console.log("Base note count:", baseNoteCount);
-    console.log("Final note count:", noteCount);
     const newNotes: Note[] = [];
     let noteId = 0;
 
@@ -206,8 +200,6 @@ const RhythmGame = ({
 
     // Sort by start time
     newNotes.sort((a, b) => a.startTime - b.startTime);
-    console.log("Generated notes:", newNotes.length);
-    console.log("First 5 notes:", newNotes.slice(0, 5));
     setNotes(newNotes);
   };
 
@@ -249,14 +241,6 @@ const RhythmGame = ({
       currentScore.okay * 40;
     const maxPossibleScore = totalNotes * 100;
 
-    // DEBUG LOGS
-    console.log("=== GAME END DEBUG ===");
-    console.log("Total notes generated:", totalNotes);
-    console.log("Score breakdown:", currentScore);
-    console.log("Hit notes (perfect + good + okay):", hitNotes);
-    console.log("Total score (weighted):", totalScore);
-    console.log("Max possible score:", maxPossibleScore);
-
     // Calculate accuracy based on score quality (weighted by perfect/good/okay scores)
     const accuracy =
       maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0;
@@ -264,13 +248,6 @@ const RhythmGame = ({
     // Calculate percentage of notes hit (simple hit ratio)
     const notesHitPercentage =
       totalNotes > 0 ? (hitNotes / totalNotes) * 100 : 0;
-
-    console.log("Calculated accuracy (weighted):", accuracy.toFixed(2) + "%");
-    console.log(
-      "Notes hit percentage (simple ratio):",
-      notesHitPercentage.toFixed(2) + "%",
-    );
-    console.log("Are they the same?", accuracy === notesHitPercentage);
 
     // Select a message that hasn't been used yet
     let availableIndices: number[] = [];
@@ -311,15 +288,10 @@ const RhythmGame = ({
     noteId: number,
     accuracy: "perfect" | "good" | "okay" | "miss",
   ) => {
-    console.log(`Note hit: ID=${noteId}, Accuracy=${accuracy}`);
-    setScore((prev) => {
-      const newScore = {
-        ...prev,
-        [accuracy]: prev[accuracy] + 1,
-      };
-      console.log("Updated score:", newScore);
-      return newScore;
-    });
+    setScore((prev) => ({
+      ...prev,
+      [accuracy]: prev[accuracy] + 1,
+    }));
   };
 
   const resetGame = () => {

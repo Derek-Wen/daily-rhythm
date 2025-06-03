@@ -71,15 +71,6 @@ const FallingNotes = ({
       }))
       .filter((note) => note.y < GAME_HEIGHT + 50 && !note.hit);
 
-    // Only log every 60 frames (about once per second) to avoid spam
-    if (Math.floor(gameTime * 60) % 60 === 0) {
-      console.log(
-        `Game time: ${gameTime.toFixed(2)}s, Active notes: ${updatedNotes.length}, Total notes: ${notes.length}`,
-      );
-      const hitNotes = notes.filter((n) => n.hit).length;
-      console.log(`Notes hit so far: ${hitNotes}`);
-    }
-
     setActiveNotes(updatedNotes);
   }, [gameTime, notes, isPlaying, noteSpeed]);
 
@@ -157,22 +148,12 @@ const FallingNotes = ({
   };
 
   const handleTap = (lane: number) => {
-    console.log(`=== TAP DETECTED === Lane: ${lane}`);
-
     // Find the closest note in this lane
     const notesInLane = activeNotes.filter(
       (note) => note.lane === lane && !note.hit,
     );
 
-    console.log(`Notes in lane ${lane}:`, notesInLane.length);
-    console.log(`Active notes total:`, activeNotes.length);
-    console.log(
-      `Unhit notes in lane:`,
-      notesInLane.map((n) => ({ id: n.id, y: n.y, hit: n.hit })),
-    );
-
     if (notesInLane.length === 0) {
-      console.log(`No notes in lane ${lane} - MISS`);
       showFeedback(lane, "miss");
       return;
     }
@@ -187,17 +168,11 @@ const FallingNotes = ({
     const distance = Math.abs(closestNote.y - TAP_ZONE_Y);
     let accuracy: "perfect" | "good" | "okay" | "miss";
 
-    console.log(
-      `Closest note: ID=${closestNote.id}, Y=${closestNote.y}, Distance=${distance}, TAP_ZONE_Y=${TAP_ZONE_Y}`,
-    );
-
     // Stricter timing for expert difficulty
     if (distance <= 15) accuracy = "perfect";
     else if (distance <= 25) accuracy = "good";
     else if (distance <= 35) accuracy = "okay";
     else accuracy = "miss";
-
-    console.log(`Accuracy determined: ${accuracy}`);
 
     if (accuracy !== "miss") {
       // Mark tap note as hit
@@ -206,14 +181,10 @@ const FallingNotes = ({
           note.id === closestNote.id ? { ...note, hit: true } : note,
         ),
       );
-      console.log(`Note ${closestNote.id} marked as hit`);
     }
 
     showFeedback(lane, accuracy);
     if (onNoteHit) {
-      console.log(
-        `Calling onNoteHit with: noteId=${closestNote.id}, accuracy=${accuracy}`,
-      );
       onNoteHit(closestNote.id, accuracy);
     }
 
