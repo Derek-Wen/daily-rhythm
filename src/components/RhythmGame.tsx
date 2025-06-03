@@ -338,6 +338,9 @@ const RhythmGame = ({
           <CardTitle className="text-center text-2xl font-bold text-pink-800">
             {currentDate || "Loading..."}
           </CardTitle>
+          <p className="text-center text-sm text-pink-600 mt-1">
+            Win conditions: 70% accuracy + 75% notes hit
+          </p>
           <div className="flex justify-between items-center mt-2">
             <div className="text-sm text-pink-600">
               Notes: {notes.length} | Speed: {noteSpeed}px/s | Frequency:{" "}
