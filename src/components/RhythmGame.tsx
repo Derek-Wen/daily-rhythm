@@ -111,6 +111,7 @@ const RhythmGame = ({
 
   const gameTimerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
+  const scoreRef = useRef({ perfect: 0, good: 0, okay: 0, miss: 0 });
   const GAME_DURATION = 30; // seconds
 
   // Generate daily notes based on date seed
@@ -205,7 +206,9 @@ const RhythmGame = ({
 
   const startGame = () => {
     setGameState("playing");
-    setScore({ perfect: 0, good: 0, okay: 0, miss: 0 });
+    const initialScore = { perfect: 0, good: 0, okay: 0, miss: 0 };
+    setScore(initialScore);
+    scoreRef.current = initialScore;
     setGameTime(0);
     setProgress(0);
     startTimeRef.current = Date.now();
@@ -230,8 +233,8 @@ const RhythmGame = ({
       clearInterval(gameTimerRef.current);
     }
 
-    // Capture the current score before any state changes
-    const currentScore = { ...score };
+    // Use the ref to get the most current score
+    const currentScore = { ...scoreRef.current };
     const totalNotes = notes.length;
     const hitNotes =
       currentScore.perfect + currentScore.good + currentScore.okay;
@@ -248,6 +251,16 @@ const RhythmGame = ({
     // Calculate percentage of notes hit (simple hit ratio)
     const notesHitPercentage =
       totalNotes > 0 ? (hitNotes / totalNotes) * 100 : 0;
+
+    console.log("🎮 Final game stats:", {
+      currentScore,
+      totalNotes,
+      hitNotes,
+      totalScore,
+      maxPossibleScore,
+      accuracy: accuracy.toFixed(1),
+      notesHitPercentage: notesHitPercentage.toFixed(1),
+    });
 
     // Select a message that hasn't been used yet
     let availableIndices: number[] = [];
@@ -276,7 +289,14 @@ const RhythmGame = ({
     setCurrentMessage(MESSAGE_BANK[messageIndex]);
 
     // Determine if this is a win
-    const isWin = accuracy >= 75 && notesHitPercentage >= 50;
+    const isWin = accuracy >= 70 && notesHitPercentage >= 75;
+
+    console.log("🏆 Win check:", {
+      accuracy: accuracy.toFixed(1),
+      notesHitPercentage: notesHitPercentage.toFixed(1),
+      isWin,
+      winCondition: "accuracy >= 70 && notesHitPercentage >= 75",
+    });
 
     // Set game state to complete
     setGameState("complete");
@@ -288,10 +308,15 @@ const RhythmGame = ({
     noteId: number,
     accuracy: "perfect" | "good" | "okay" | "miss",
   ) => {
-    setScore((prev) => ({
-      ...prev,
-      [accuracy]: prev[accuracy] + 1,
-    }));
+    setScore((prev) => {
+      const newScore = {
+        ...prev,
+        [accuracy]: prev[accuracy] + 1,
+      };
+      // Update the ref with the latest score
+      scoreRef.current = newScore;
+      return newScore;
+    });
   };
 
   const resetGame = () => {
@@ -299,7 +324,9 @@ const RhythmGame = ({
     setGameState("ready");
     setGameTime(0);
     setProgress(0);
-    setScore({ perfect: 0, good: 0, okay: 0, miss: 0 });
+    const resetScore = { perfect: 0, good: 0, okay: 0, miss: 0 };
+    setScore(resetScore);
+    scoreRef.current = resetScore;
     setCurrentMessage("");
     generateDailyNotes();
   };
@@ -403,10 +430,10 @@ const RhythmGame = ({
                 ((score.perfect * 100 + score.good * 70 + score.okay * 40) /
                   (notes.length * 100)) *
                   100 >=
-                  75 &&
+                  70 &&
                 ((score.perfect + score.good + score.okay) / notes.length) *
                   100 >=
-                  50
+                  75
               }
               hasWonToday={hasWonToday}
             />

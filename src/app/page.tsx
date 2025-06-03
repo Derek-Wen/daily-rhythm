@@ -84,18 +84,42 @@ export default function Home() {
   };
 
   const handleGameComplete = (score: number, isWin: boolean) => {
+    console.log("🎯 handleGameComplete called:", { score, isWin });
+
     if (isWin) {
       const todaySF = moment().tz("America/Los_Angeles").format("YYYY-MM-DD");
       const lastWinDate = localStorage.getItem("lastWinDate");
 
+      console.log("📅 Date check:", {
+        todaySF,
+        lastWinDate,
+        currentStreak: streak,
+      });
+      console.log("🔍 Comparison result:", lastWinDate !== todaySF);
+
       // Only increment streak if they haven't won today
       if (lastWinDate !== todaySF) {
         const newStreak = streak + 1;
+        console.log("🚀 Updating streak:", { oldStreak: streak, newStreak });
+
         setStreak(newStreak);
         localStorage.setItem("rhythmPuzzleStreak", newStreak.toString());
         localStorage.setItem("lastWinDate", todaySF);
         setHasWonToday(true);
+
+        console.log(
+          "✅ Streak updated in localStorage:",
+          localStorage.getItem("rhythmPuzzleStreak"),
+        );
+        console.log(
+          "✅ Last win date saved:",
+          localStorage.getItem("lastWinDate"),
+        );
+      } else {
+        console.log("⏭️ Already won today, not incrementing streak");
       }
+    } else {
+      console.log("❌ Game not won, no streak update");
     }
   };
 
