@@ -34,17 +34,19 @@ interface Note {
 
 interface RhythmGameProps {
   difficulty?: number;
-  onComplete?: (score: number) => void;
+  onComplete?: (score: number, isWin: boolean) => void;
+  hasWonToday?: boolean;
 }
 
 // Message bank for Emily
+// Message bank for Emily
 const MESSAGE_BANK = [
-  "i like you so much emily",
+  "i like you so much",
   "you are the prettiest i am so lucky",
   "you are such a dummy butt",
   "if you played this game that means i like you more",
-  "why do you have to be so kind and caring and hardworking",
-  "i like you so so so much",
+  "why are you so kind and caring",
+  "i like you so so so so so so so much",
   "i'm very grateful that i met you",
   "good job bunghole",
   "5'2.9999",
@@ -55,9 +57,41 @@ const MESSAGE_BANK = [
   "god i like you so much wtf it's insane",
   "sibal i like you sibal",
   "are you sure you like me, i like you so much",
+  "ANNYEONGHASEYO FINE SHYT",
+  "you may like uni on hokkaido scallop and beef noodle soup but i like you o.o",
+  "ur a bunghole pussio",
+  "can i ask how you got so pretty?",
+  "how is everything you do so cute?",
+  "i like you mostestestestestestestestestestestestestestestestestestestestestest",
+  "i still remember the togedemaru you drew for me, i am so lucky <3",
+  "you can stop acting that you like me more when in fact i actually like you more",
+  "you look pretty in every angle",
+  "can we get a dog, why do u hate gandalf",
+  "1 dog, 2 rascals, and 1 cat o.o",
+  "come to my arms NOW",
+  "how did i bag you that's crazy lucky from me wtf",
+  "you have the trifecta of being pretty, hardworking, and funny personality wtf i won the lottery",
+  "hot korean girlfriend o.o",
+  "i love listening to ur voice <3",
+  "i tira miss you :3",
+  "can you carry a french press or a wet stone or a mocha pot back home o.o ",
+  "can you be the milk to my shake",
+  "first japan then korea then china then new york",
+  "why do you hate burgers so much dummy",
+  "great job u protein maxxer caffeine addict",
+  "lips... o.o",
+  "beautiful smile + cute voice = deadly combo",
+  "why did you turn me into a cutesy cringe person you bunghole",
+  "you make so happy and laugh so much :)",
+  "ur the black cat to my golden retriever <3",
+  "<3333333333333333333333",
 ];
 
-const RhythmGame = ({ difficulty = 1, onComplete }: RhythmGameProps) => {
+const RhythmGame = ({
+  difficulty = 1,
+  onComplete,
+  hasWonToday = false,
+}: RhythmGameProps) => {
   // Game states
   const [gameState, setGameState] = useState<
     "tutorial" | "ready" | "playing" | "complete"
@@ -95,6 +129,12 @@ const RhythmGame = ({ difficulty = 1, onComplete }: RhythmGameProps) => {
       localStorage.setItem("emily-rhythm-game-visited", "true");
     } else {
       setIsFirstTime(false);
+    }
+
+    // Set a random message for display when they've already won
+    if (hasWonToday && !currentMessage) {
+      const randomIndex = Math.floor(Math.random() * MESSAGE_BANK.length);
+      setCurrentMessage(MESSAGE_BANK[randomIndex]);
     }
 
     return () => {
@@ -227,10 +267,13 @@ const RhythmGame = ({ difficulty = 1, onComplete }: RhythmGameProps) => {
     setUsedMessageIndices((prev) => [...prev, messageIndex]);
     setCurrentMessage(MESSAGE_BANK[messageIndex]);
 
+    // Determine if this is a win
+    const isWin = accuracy >= 75 && notesHitPercentage >= 50;
+
     // Set game state to complete
     setGameState("complete");
 
-    if (onComplete) onComplete(totalScore);
+    if (onComplete) onComplete(totalScore, isWin);
   };
 
   const handleNoteHit = (
@@ -340,6 +383,15 @@ const RhythmGame = ({ difficulty = 1, onComplete }: RhythmGameProps) => {
               notesHitPercentage={
                 ((score.perfect + score.good + score.okay) / notes.length) * 100
               }
+              isWin={
+                ((score.perfect + score.good + score.okay) / notes.length) *
+                  100 >=
+                  75 &&
+                ((score.perfect + score.good + score.okay) / notes.length) *
+                  100 >=
+                  50
+              }
+              hasWonToday={hasWonToday}
             />
           ) : (
             <div className="space-y-6">
@@ -365,40 +417,61 @@ const RhythmGame = ({ difficulty = 1, onComplete }: RhythmGameProps) => {
 
               <div className="flex flex-col items-center space-y-4">
                 {gameState === "ready" ? (
-                  <Button
-                    size="lg"
-                    onClick={startGame}
-                    className="w-40 h-16 text-lg bg-pink-500 hover:bg-pink-600 text-white"
-                  >
-                    <Play className="mr-2 h-5 w-5" /> Start
-                  </Button>
-                ) : (
+                  hasWonToday ? (
+                    <div className="text-center space-y-4">
+                      <div className="text-2xl font-bold text-green-600">
+                        🎉 You Won Today! 🎉
+                      </div>
+                      <div className="bg-gradient-to-r from-pink-100 to-pink-200 p-4 rounded-lg border border-pink-300">
+                        <p className="text-center text-pink-800 font-medium">
+                          {currentMessage ||
+                            "Come back tomorrow for a new challenge!"}
+                        </p>
+                      </div>
+                      <p className="text-sm text-pink-600">
+                        Come back tomorrow for the next puzzle!
+                      </p>
+                    </div>
+                  ) : (
+                    <Button
+                      size="lg"
+                      onClick={startGame}
+                      className="w-40 h-16 text-lg bg-pink-500 hover:bg-pink-600 text-white"
+                    >
+                      <Play className="mr-2 h-5 w-5" /> Start
+                    </Button>
+                  )
+                ) : gameState === "playing" ? (
                   <div className="text-center">
                     <div className="text-2xl font-bold text-pink-700">
                       {Math.max(0, Math.ceil(GAME_DURATION - gameTime))}s
                     </div>
                     <p className="text-sm text-pink-600">Time remaining</p>
                   </div>
-                )}
+                ) : null}
 
-                <p className="text-sm text-pink-600 text-center">
-                  {gameState === "playing"
-                    ? "Hit tap notes! Match the rhythm pattern!"
-                    : "Press Start to begin today's rhythm challenge"}
-                </p>
+                {!hasWonToday && (
+                  <p className="text-sm text-pink-600 text-center">
+                    {gameState === "playing"
+                      ? "Hit tap notes! Match the rhythm pattern!"
+                      : "Press Start to begin today's rhythm challenge"}
+                  </p>
+                )}
               </div>
             </div>
           )}
         </CardContent>
 
         <CardFooter className="flex justify-center bg-pink-50">
-          <Button
-            variant="outline"
-            onClick={resetGame}
-            className="border-pink-300 text-pink-700 hover:bg-pink-100"
-          >
-            <RefreshCw className="mr-2 h-4 w-4" /> New Game
-          </Button>
+          {!hasWonToday && (
+            <Button
+              variant="outline"
+              onClick={resetGame}
+              className="border-pink-300 text-pink-700 hover:bg-pink-100"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" /> New Game
+            </Button>
+          )}
         </CardFooter>
       </Card>
 

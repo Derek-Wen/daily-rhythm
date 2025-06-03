@@ -11,6 +11,7 @@ import moment from "moment-timezone";
 export default function Home() {
   const [streak, setStreak] = useState(0);
   const [nextPuzzleTime, setNextPuzzleTime] = useState("");
+  const [hasWonToday, setHasWonToday] = useState(false);
   const [weather, setWeather] = useState<{
     high: number;
     low: number;
@@ -22,6 +23,13 @@ export default function Home() {
     const savedStreak = localStorage.getItem("rhythmPuzzleStreak");
     if (savedStreak) {
       setStreak(parseInt(savedStreak, 10));
+    }
+
+    // Check if user has won today
+    const todaySF = moment().tz("America/Los_Angeles").format("YYYY-MM-DD");
+    const lastWinDate = localStorage.getItem("lastWinDate");
+    if (lastWinDate === todaySF) {
+      setHasWonToday(true);
     }
 
     // Calculate time until next puzzle
@@ -75,11 +83,19 @@ export default function Home() {
     }
   };
 
-  const handleGameComplete = (score: number) => {
-    if (score > 0) {
-      const newStreak = streak + 1;
-      setStreak(newStreak);
-      localStorage.setItem("rhythmPuzzleStreak", newStreak.toString());
+  const handleGameComplete = (score: number, isWin: boolean) => {
+    if (isWin) {
+      const todaySF = moment().tz("America/Los_Angeles").format("YYYY-MM-DD");
+      const lastWinDate = localStorage.getItem("lastWinDate");
+
+      // Only increment streak if they haven't won today
+      if (lastWinDate !== todaySF) {
+        const newStreak = streak + 1;
+        setStreak(newStreak);
+        localStorage.setItem("rhythmPuzzleStreak", newStreak.toString());
+        localStorage.setItem("lastWinDate", todaySF);
+        setHasWonToday(true);
+      }
     }
   };
 
@@ -118,6 +134,15 @@ export default function Home() {
             </CardContent>
           </Card>
 
+          <Card className="w-full md:w-auto border-pink-200 bg-white/80">
+            <CardContent className="flex items-center p-4">
+              <Trophy className="mr-2 h-4 w-4 text-pink-600" />
+              <span className="text-pink-700">
+                Streak: {streak} day{streak !== 1 ? "s" : ""}
+              </span>
+            </CardContent>
+          </Card>
+
           {weather && (
             <Card className="w-full md:w-auto border-pink-200 bg-white/80">
               <CardContent className="flex items-center p-4">
@@ -147,7 +172,10 @@ export default function Home() {
         >
           <Card className="w-full overflow-hidden border-pink-200 bg-white/80">
             <CardContent className="p-0">
-              <RhythmGame onComplete={handleGameComplete} />
+              <RhythmGame
+                onComplete={handleGameComplete}
+                hasWonToday={hasWonToday}
+              />
             </CardContent>
           </Card>
         </motion.div>

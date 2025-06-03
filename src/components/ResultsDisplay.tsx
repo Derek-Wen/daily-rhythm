@@ -19,6 +19,8 @@ interface ResultsDisplayProps {
   accuracy: number;
   notesHitPercentage: number;
   onPlayAgain?: () => void;
+  isWin?: boolean;
+  hasWonToday?: boolean;
 }
 
 const ResultsDisplay = ({
@@ -28,6 +30,8 @@ const ResultsDisplay = ({
   accuracy = 75,
   notesHitPercentage = 80,
   onPlayAgain = () => {},
+  isWin = true,
+  hasWonToday = false,
 }: ResultsDisplayProps) => {
   const [showMessage, setShowMessage] = useState(false);
   const [showConfetti, setShowConfetti] = useState(true);
@@ -90,7 +94,16 @@ const ResultsDisplay = ({
         transition={{ duration: 0.5 }}
       >
         <Card className="border-2 shadow-lg border-pink-200 bg-white/80">
-          <CardHeader className="text-center pb-2"></CardHeader>
+          <CardHeader className="text-center pb-2">
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className={`text-4xl font-bold py-4 ${isWin ? "text-green-600" : "text-red-600"}`}
+            >
+              {isWin ? "WIN" : "LOSE"}
+            </motion.div>
+          </CardHeader>
 
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
@@ -130,13 +143,22 @@ const ResultsDisplay = ({
           </CardContent>
 
           <CardFooter className="flex flex-col gap-2">
-            <Button
-              variant="outline"
-              className="w-full border-pink-300 text-pink-700 hover:bg-pink-100"
-              onClick={onPlayAgain}
-            >
-              Play Again
-            </Button>
+            {isWin && hasWonToday ? (
+              <div className="text-center text-pink-600">
+                <p className="text-sm font-medium">🎉 Congratulations! 🎉</p>
+                <p className="text-xs mt-1">
+                  Come back tomorrow for a new challenge!
+                </p>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full border-pink-300 text-pink-700 hover:bg-pink-100"
+                onClick={onPlayAgain}
+              >
+                Play Again
+              </Button>
+            )}
           </CardFooter>
         </Card>
       </motion.div>
